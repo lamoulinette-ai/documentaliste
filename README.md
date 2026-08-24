@@ -147,8 +147,9 @@ FastAPI derrière un reverse-proxy Caddy, PostgreSQL/pgvector dans le même `doc
 image publiée sur GHCR par GitHub Actions à chaque poussée sur `main`.
 
 Le service tourne en `read_only`, sans capacités, avec un plafond mémoire et un limiteur de
-débit par adresse. Les poids du modèle d'embeddings sont **cuits dans l'image** : le premier
-appel ne dépend d'aucun téléchargement, et le conteneur n'a nulle part où en écrire.
+débit par adresse. Les poids du modèle d'embeddings sont **cuits dans l'image** : rien n'est
+téléchargé au démarrage, et le conteneur en lecture seule n'aurait de toute façon nulle part
+où écrire.
 
 La procédure détaillée n'est pas publiée — elle nomme l'hôte, le compte de service et
 l'emplacement des secrets.

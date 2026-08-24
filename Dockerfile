@@ -60,9 +60,16 @@ RUN uv sync --frozen --no-dev ${EXTRAS}
 RUN useradd -m -u 10001 documentaliste && chown -R documentaliste:documentaliste /app
 USER documentaliste
 
+# `HF_HUB_OFFLINE` n'est PAS activé, et c'est un constat plutôt qu'un choix : en backend
+# ONNX, sentence-transformers interroge l'index du dépôt pour résoudre le nom du fichier de
+# poids AVANT de consulter le cache local. Hors ligne, cette résolution échoue et le service
+# refuse de démarrer — poids présents ou non.
+#
+# Les poids restent cuits dans l'image : rien n'est retéléchargé, seule la liste des
+# fichiers est demandée. Le démarrage dépend donc d'un aller-retour vers Hugging Face,
+# ce qui reste à corriger en chargeant le modèle depuis un chemin local explicite.
 ENV PATH="/app/.venv/bin:${PATH}" \
     HOME=/tmp \
-    HF_HUB_OFFLINE=1 \
     DOCUMENTALISTE_MOTEUR=${MOTEUR_EMBEDDING} \
     DOCUMENTALISTE_CACHE=/tmp/cache
 
