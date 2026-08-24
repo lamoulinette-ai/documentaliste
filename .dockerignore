@@ -1,0 +1,35 @@
+# Ce que Docker envoie au démon AVANT de lire le Dockerfile.
+#
+# Sans ce fichier, le contexte de construction pèse une vingtaine de gigaoctets — les
+# archives HAS, les PDF extraits, les vecteurs — alors que l'image n'en utilise que deux
+# mégaoctets. Les `COPY` du Dockerfile sont ciblés, mais ils n'interviennent qu'après le
+# transfert : restreindre le contexte est le seul moyen d'éviter ce coût.
+
+# Archives sources, dérivés du corpus, et tout ce qui vit hors du dépôt.
+*.zip
+NON_COMMITES/
+fixtures/
+reports/
+docs/
+
+# Environnements, caches et artefacts.
+.venv/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+*.dump
+.cache/
+models/
+
+# Secrets — ne doivent jamais entrer dans une image, même par un COPY accidentel.
+.env
+.env.*
+!.env.example
+
+# Sources de développement inutiles à l'image.
+tests/
+.git/
+.gitignore
+docker-compose.yml
+lessons.md

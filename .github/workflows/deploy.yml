@@ -1,0 +1,91 @@
+name: CI/CD — build & deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Installer uv
+        uses: astral-sh/setup-uv@v6
+      # Les mêmes extras que ceux vérifiés en local. « embeddings » et « onnx » sont
+      # lourds, mais les omettre ferait passer la CI sur une installation différente de
+      # celle qu'on a testée — et de celle que l'image construit.
+      - name: Dépendances
+        run: uv sync --frozen --extra api --extra bdd --extra embeddings --extra onnx
+      - name: Lint
+        run: uv run ruff check src tests
+      # Le format fait partie de la vérification au même titre que le lint : lancer le
+      # premier seul laisse l'écart de mise en forme grossir en silence.
+      - name: Format
+        run: uv run ruff format --check src tests
+      - name: Tests
+        run: uv run pytest -q
+
+  build-and-deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Nom d'image en minuscules
+        id: img
+        run: echo "name=${REGISTRY}/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Connexion au registre
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.img.outputs.name }}:latest
+            ${{ steps.img.outputs.name }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Seul le service `api` est redéployé. `base` porte les 7,2 Go du corpus dans un
+      # volume : la relancer à chaque livraison serait long et sans objet, et un
+      # `docker compose up -d` global la recréerait au moindre changement du fichier.
+      - name: Déploiement SSH sur le VPS OVH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          envs: GHCR_USER,GHCR_TOKEN,IMAGE
+          script: |
+            set -e
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+            cd /opt/documentaliste
+            export DOCUMENTALISTE_IMAGE="${IMAGE}:latest"
+            docker compose pull api
+            docker compose up -d api
+            docker image prune -f
+        env:
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GHCR_DEPLOY_TOKEN }}
+          IMAGE: ${{ steps.img.outputs.name }}

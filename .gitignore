@@ -1,0 +1,41 @@
+# Environnements, caches d'outils et artefacts de construction
+.venv/
+__pycache__/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.ruff_cache/
+
+
+# Secrets — jamais commités
+.env
+.env.*
+!.env.example
+
+# Modèles d'embeddings téléchargés localement
+.cache/
+models/
+
+# Tout ce qui ne fait pas fonctionner l'application.
+#
+# Rien n'est supprimé : les 31 sondes de mesure, leurs 22 fichiers de tests, l'étalon, les
+# jugements humains et les rapports vivent ici, hors du dépôt vitrine. Ils ont produit les
+# chiffres du projet et coûtent des crédits d'API à régénérer — les perdre serait pire que
+# les cacher.
+#
+# Un dossier plutôt qu'une liste de motifs : ce qui doit sortir se déplace, et le
+# .gitignore n'a plus à suivre chaque nouveau nom de fichier.
+NON_COMMITES/
+
+# Filets, pour le cas où l'un d'eux réapparaîtrait à la racine plutôt que dans le dossier
+# ci-dessus. Une règle qui ne sert jamais coûte une ligne ; celle qui manque coûte 15 Go.
+*.zip
+*.dump
+fixtures/
+reports/
+docs/
+
+# Procédure de déploiement : elle nomme l'hôte, le compte de service, les ports internes
+# et l'emplacement des secrets. Rien de tout cela n'a sa place dans un dépôt public.
+deploy/

@@ -1,0 +1,78 @@
+[project]
+name = "documentaliste"
+version = "0.0.1"
+description = "Recherche documentée dans les référentiels de la Haute Autorité de Santé"
+requires-python = ">=3.11"
+dependencies = [
+    "httpx>=0.27",
+    "pymupdf>=1.25",
+    "pdfplumber>=0.11",
+    "tqdm>=4.66",
+]
+
+[project.optional-dependencies]
+# Sonde 3 uniquement. Isolé parce que c'est le seul gros téléchargement du lot 0 :
+# on doit pouvoir jouer les sondes 1 et 2 sans installer un modèle.
+embeddings = [
+    "sentence-transformers>=3.0",
+    "numpy>=1.26",
+]
+
+# Moteur d'inférence alternatif, à n'installer que pour l'essai de quantification.
+# Isolé parce qu'il tire onnxruntime et optimum, inutiles tant qu'on reste sur PyTorch.
+onnx = [
+    "optimum[onnxruntime]>=1.20",
+]
+
+# Persistance. Isolé des sondes : le lot 0 se rejoue sans base, et doit le rester.
+bdd = [
+    "psycopg[binary]>=3.2",
+]
+
+# Service HTTP. Isolé pour que les sondes de mesure s'installent sans serveur web, et
+# surtout pour que l'image de production n'embarque pas l'appareil de mesure.
+api = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "pydantic>=2.9",
+    "slowapi>=0.1.9",
+]
+
+[project.scripts]
+sonde-recherche = "documentaliste.probes.retrieval:main"
+sonde-balayage = "documentaliste.probes.sweep:main"
+sonde-reponse = "documentaliste.probes.reponse:main"
+corpus-extraire = "documentaliste.corpus.archive:main"
+documentaliste-pages = "documentaliste.db.pages:main"
+documentaliste-ingerer = "documentaliste.db.ingest:main"
+documentaliste-lexique = "documentaliste.db.lexique:main"
+documentaliste-etat = "documentaliste.db.etat:main"
+
+[dependency-groups]
+dev = ["pytest>=8.0", "ruff>=0.6"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/documentaliste"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/documentaliste/db/schema.sql" = "documentaliste/db/schema.sql"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.isort]
+# `tests/outils.py` est atteint par `pythonpath`, pas installé : sans cette déclaration
+# ruff le range parmi les dépendances externes et réclame un ordre que les tests n'ont pas.
+known-first-party = ["documentaliste", "outils"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

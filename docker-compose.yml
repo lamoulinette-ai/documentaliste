@@ -1,0 +1,95 @@
+# Déploiement du Documentaliste. En local : `docker compose up --build`.
+# Sur le VPS : `docker compose pull && docker compose up -d` (image du registre).
+#
+# Les limites mémoire ne sont pas décoratives : le VPS n'a AUCUNE zone d'échange. Quand la
+# mémoire manque, il n'y a pas de dégradation, l'OOM killer choisit une victime au poids —
+# et l'auditeur, qui est en production, en est une candidate plus grosse que ce service.
+services:
+  base:
+    image: pgvector/pgvector:pg16
+    container_name: documentaliste-pg
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-documentaliste}
+      POSTGRES_USER: ${POSTGRES_USER:-documentaliste}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?mot de passe requis, voir .env.example}
+      # « C.UTF-8 » et non « fr_FR.UTF-8 » : l'image Debian de pgvector ne génère pas les
+      # locales nationales, et `initdb` y échoue en silence — le conteneur redémarre alors
+      # en boucle, et « docker compose up -d » annonce pourtant « Started ».
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C.UTF-8"
+    # `shared_buffers` est une allocation réelle ; `effective_cache_size` n'est qu'une
+    # indication au planificateur et ne consomme rien.
+    #
+    # 1 Go plutôt que les 2 Go du réglage local : l'index vectoriel pèse 1 551 Mo, mais il
+    # n'a pas besoin de tenir dans `shared_buffers` pour être servi vite — le cache de
+    # pages du système, déjà à 5 Go sur la cible, le porte. Réserver davantage prendrait
+    # à ce cache ce qu'on croirait lui donner.
+    command: >
+      postgres
+      -c shared_buffers=${POSTGRES_SHARED_BUFFERS:-1GB}
+      -c effective_cache_size=${POSTGRES_EFFECTIVE_CACHE_SIZE:-3GB}
+      -c maintenance_work_mem=${POSTGRES_MAINTENANCE_WORK_MEM:-256MB}
+    ports:
+      # Boucle locale uniquement. Inutile à l'API — elle joint la base par le réseau
+      # Docker — mais indispensable aux sondes lancées depuis le poste, et aux
+      # vérifications `psql` d'une restauration.
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - donnees:/var/lib/postgresql/data
+    # Docker plafonne « /dev/shm » à 64 Mo. La construction parallèle d'un index alloue
+    # « maintenance_work_mem » en mémoire partagée dynamique : au-delà de 64 Mo, elle
+    # échoue sur « could not resize shared memory segment ». Ce plafond doit donc rester
+    # supérieur à « maintenance_work_mem », et il ne consomme que ce qui est réellement
+    # employé — c'est un plafond, pas une réservation.
+    shm_size: 1gb
+    mem_limit: 2g
+    cpus: 2.0
+    healthcheck:
+      # Sans cela, l'API démarrée juste après échouerait sur une base qui n'a pas fini son
+      # initialisation — panne intermittente, donc coûteuse.
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-documentaliste} -d ${POSTGRES_DB:-documentaliste}"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  api:
+    image: ${DOCUMENTALISTE_IMAGE:-ghcr.io/lamoulinette-ai/documentaliste:latest}
+    build:
+      context: .
+      args:
+        # Le processeur du VPS n'a pas AVX512-VNNI. Le modèle quantifié tourne quand même —
+        # onnxruntime retombe sur un chemin générique — et reste plus léger que `torch`.
+        # Basculer sur « torch » si la mesure de latence le justifie, pas par précaution.
+        MOTEUR_EMBEDDING: ${MOTEUR_EMBEDDING:-onnx}
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      base:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8005:8005"   # exposé en local ; Caddy fait le TLS devant
+    # --- Durcissement, même gabarit que l'auditeur ---
+    read_only: true
+    tmpfs:
+      # Le service n'écrit qu'ici : le cache des questions déjà posées, et ce que les
+      # bibliothèques déposent au passage. Perdu au redémarrage, et c'est voulu.
+      - /tmp:rw,noexec,nosuid,size=256m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 256
+    # Le modèle d'embedding réside en mémoire pour la durée du processus. 1,5 Go laisse de
+    # la marge sans jamais approcher la pointe possible de l'auditeur.
+    mem_limit: 1500m
+    cpus: 2.0
+    ulimits:
+      nofile: 4096
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8005/health',timeout=4).status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  donnees:
