@@ -66,6 +66,24 @@ class Budget:
         return cls(dossier, plafond)
 
     @property
+    def inscriptible(self) -> bool:
+        """Le dossier accepte-t-il réellement une écriture ?
+
+        `compter` et `ecrire` avalent les erreurs d'écriture, pour qu'un disque plein ne
+        casse pas une réponse. La même clémence masquerait à jamais un dossier appartenant
+        à un autre utilisateur : le cache paraîtrait fonctionner et ne garderait rien.
+
+        Cette propriété existe pour que le démarrage puisse le dire une fois.
+        """
+        essai = self.dossier / ".inscriptible"
+        try:
+            essai.write_text("", encoding="utf-8")
+            essai.unlink()
+        except OSError:
+            return False
+        return True
+
+    @property
     def appels(self) -> int:
         """Appels au modèle déjà passés."""
         try:

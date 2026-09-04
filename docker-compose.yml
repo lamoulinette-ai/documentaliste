@@ -82,9 +82,14 @@ services:
       - documentaire
     # --- Durcissement, même gabarit que l'auditeur ---
     read_only: true
+    volumes:
+      # Le cache et le compteur d'appels. Sur tmpfs, ils s'effaçaient à chaque recréation
+      # du conteneur : le garde-fou de dépense repartait de zéro, et les questions déjà
+      # posées repassaient toutes par le modèle — assez pour franchir sa limite de débit
+      # et faire dégrader le service sans raison apparente.
+      - cache:/var/cache/documentaliste
     tmpfs:
-      # Le service n'écrit qu'ici : le cache des questions déjà posées, et ce que les
-      # bibliothèques déposent au passage. Perdu au redémarrage, et c'est voulu.
+      # Ce que les bibliothèques déposent au passage. Volatile, et sans conséquence.
       - /tmp:rw,noexec,nosuid,size=256m,mode=1777
     security_opt:
       - no-new-privileges:true
@@ -110,3 +115,4 @@ networks:
 
 volumes:
   donnees:
+  cache:

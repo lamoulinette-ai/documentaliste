@@ -58,6 +58,13 @@ RUN uv sync --frozen --no-dev ${EXTRAS}
 # Utilisateur non-root. Aucun dossier d'état inscriptible : tout ce que le service écrit
 # — le cache des questions déjà posées — va sur le tmpfs monté par docker-compose.
 RUN useradd -m -u 10001 documentaliste && chown -R documentaliste:documentaliste /app
+
+# Le dossier du cache est créé ici, avec son propriétaire, et non par le compose. Docker
+# initialise un volume nommé vide en recopiant le contenu ET les droits du chemin de
+# l'image : sans cette ligne, le volume appartiendrait à root et le service, qui tourne en
+# 10001, n'y écrirait jamais — sans le dire, ses erreurs d'écriture étant avalées.
+RUN mkdir -p /var/cache/documentaliste \
+    && chown documentaliste:documentaliste /var/cache/documentaliste
 USER documentaliste
 
 # `HF_HUB_OFFLINE` n'est PAS activé, et c'est un constat plutôt qu'un choix : en backend

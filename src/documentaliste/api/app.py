@@ -108,6 +108,16 @@ async def cycle(_app: FastAPI):  # noqa: ANN201
     journal.info(
         "plafond de rédaction : %d appels, déjà consommés : %d", budget.plafond, budget.appels
     )
+    # Un cache qui ne s'écrit pas ne se voit nulle part ailleurs : les échecs d'écriture
+    # sont volontairement avalés, et le service répond normalement en rappelant le modèle
+    # à chaque question — jusqu'à ce qu'une limite de débit le fasse dégrader sans raison
+    # apparente.
+    if not budget.inscriptible:
+        journal.error(
+            "cache non inscriptible (%s) — le compteur et les réponses ne survivront pas, "
+            "et chaque question repassera par le modèle",
+            budget.dossier,
+        )
     yield
 
 

@@ -16,6 +16,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from documentaliste.api.budget import Budget, cle, normaliser
 
 
@@ -67,6 +69,26 @@ class TestBudget:
         """Un fichier abîmé doit dégrader vers zéro, pas casser le service."""
         (tmp_path / "appels.txt").write_text("bruit", encoding="utf-8")
         assert Budget(tmp_path).appels == 0
+
+    def test_un_dossier_inscriptible_se_declare_tel(self, tmp_path: Path) -> None:
+        assert Budget(tmp_path).inscriptible
+
+    def test_un_dossier_non_inscriptible_se_declare_tel(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Le cas que rien d'autre ne révèle.
+
+        `compter` et `ecrire` avalent les erreurs d'écriture pour qu'un disque plein ne
+        casse pas une réponse. La même clémence masque un dossier appartenant à un autre
+        utilisateur — le cache paraît fonctionner et ne garde rien, jusqu'à ce qu'une limite
+        de débit du fournisseur fasse dégrader le service sans cause apparente.
+        """
+
+        def refuser(*_args: object, **_kwargs: object) -> None:
+            raise OSError("permission refusée")
+
+        monkeypatch.setattr(Path, "write_text", refuser)
+        assert not Budget(tmp_path).inscriptible
 
     def test_le_cache_rend_ce_qu_il_a_recu(self, tmp_path: Path) -> None:
         budget = Budget(tmp_path)
