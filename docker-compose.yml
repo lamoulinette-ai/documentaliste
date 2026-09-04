@@ -66,8 +66,20 @@ services:
     depends_on:
       base:
         condition: service_healthy
+    container_name: documentaliste-api
     ports:
       - "127.0.0.1:8005:8005"   # exposé en local ; Caddy fait le TLS devant
+    networks:
+      # `default` reste indispensable : c'est par lui que l'API joint la base.
+      - default
+      # Réseau dédié à la passerelle FHIR, et à elle seule. La base n'y figure pas : un
+      # service qui n'a pas besoin de parler à PostgreSQL ne doit pas pouvoir le joindre.
+      #
+      # L'appel de la passerelle emprunte ce réseau plutôt que l'URL publique : le limiteur
+      # de débit s'applique par adresse, et tous les visiteurs de la démonstration
+      # partageraient alors les 20 requêtes horaires de l'IP du VPS. Le plafond de dépense
+      # Mistral, lui, reste le garde-fou financier et n'est pas contourné.
+      - documentaire
     # --- Durcissement, même gabarit que l'auditeur ---
     read_only: true
     tmpfs:
@@ -90,6 +102,11 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+
+networks:
+  documentaire:
+    external: true
+    name: lm_documentaire
 
 volumes:
   donnees:
