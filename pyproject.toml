@@ -3,14 +3,29 @@ name = "documentaliste"
 version = "0.0.1"
 description = "Recherche documentée dans les référentiels de la Haute Autorité de Santé"
 requires-python = ">=3.11"
+license = "Apache-2.0"
+# Les deux voyagent dans la roue, sous `.dist-info/licenses/`. L'article 4(d) de la licence
+# impose que le NOTICE suive toute redistribution : un paquet installé qui l'aurait perdu
+# ne le satisferait plus.
+license-files = ["LICENSE", "NOTICE"]
 dependencies = [
     "httpx>=0.27",
-    "pymupdf>=1.25",
-    "pdfplumber>=0.11",
     "tqdm>=4.66",
 ]
 
 [project.optional-dependencies]
+# Extraction du texte des PDF. **Isolé pour une raison de licence, pas de poids.**
+#
+# PyMuPDF est en double licence AGPL-3.0 ou commerciale. En dépendance de base il entrerait
+# dans l'image servie — les extras s'ajoutent aux dépendances de base, ils ne s'y substituent
+# pas — et l'article 13 de l'AGPL viserait alors le service en réseau.
+#
+# Il ne sert qu'à l'ingestion, hors ligne, et le texte qu'il produit est de la sortie : le
+# corpus et la base n'en portent aucune obligation. L'installer est donc un geste délibéré de
+# qui reconstruit le corpus, jamais une conséquence de faire tourner le service.
+extraction = [
+    "pymupdf>=1.25",
+]
 # Sonde 3 uniquement. Isolé parce que c'est le seul gros téléchargement du lot 0 :
 # on doit pouvoir jouer les sondes 1 et 2 sans installer un modèle.
 embeddings = [
@@ -49,7 +64,14 @@ documentaliste-lexique = "documentaliste.db.lexique:main"
 documentaliste-etat = "documentaliste.db.etat:main"
 
 [dependency-groups]
-dev = ["pytest>=8.0", "ruff>=0.6"]
+# Le groupe réclame le projet **avec les extras que la suite importe** : les tests montent
+# `probes.retrieval` (numpy), `api.budget` (fastapi) et `db.ingest` (psycopg). Sans eux,
+# `uv sync` seul rend un environnement où la collecte échoue — ce qui est arrivé, l'ancien
+# environnement portant encore des paquets installés à la main lors d'un `--extra` passé.
+#
+# `onnx` et `extraction` n'y sont pas : aucun test ne les atteint. `extraction` en
+# particulier ne doit jamais devenir implicite — voir le NOTICE.
+dev = ["documentaliste[api,bdd,embeddings]", "pytest>=8.0", "ruff>=0.6"]
 
 [build-system]
 requires = ["hatchling"]

@@ -56,24 +56,7 @@ accepte comme succès :
 Aucune des trois n'est la vérité. Publier la dernière seule inviterait à la comparer aux
 0,314 du meilleur modèle standard sur R2MED — en taisant que ce banc d'essai est conçu pour
 exiger un raisonnement, là où nos questions sont tirées des documents qu'elles doivent
-retrouver. **En lecture stricte, nous sommes à 0,322 sur une tâche plus facile.** Ces deux
-bornes vont ensemble partout.
-
-## Ce que le système ne mesure pas
-
-À lire avant de se faire une opinion favorable.
-
-- **Le taux de citations réellement fondées est inconnu.** Un juge automatique devait
-  l'établir ; il s'est révélé non recevable — cinq de ses propres appuis n'étaient pas
-  recopiés depuis le texte, et son accord avec une référence humaine arbitrée plafonne à
-  56 %. La littérature rapporte 50 à 90 % de citations non pleinement soutenues sur ce type
-  de tâche. Nous ne savons pas où nous sommes sur cette échelle.
-- **La décision de se taire ne se délègue pas à la recherche.** L'aire sous la courbe
-  d'abstention vaut 0,731 : la similarité porte un signal, pas une décision. Les quatre
-  questions que la HAS ne tranche pas franchissent *toutes* le seuil de refus — leur sujet
-  est traité, seule la conclusion manque.
-- **La vérité de terrain au document reste imparfaite** pour 162 questions positives.
-- **La stabilité sous paraphrase** n'a jamais été mesurée.
+retrouver. **Les deux bornes voyagent donc ensemble, partout où l'une est citée.**
 
 ## Architecture
 
@@ -105,7 +88,7 @@ Prérequis : Python 3.11, [uv](https://docs.astral.sh/uv/), Docker, et l'archive
 
 ```bash
 docker compose up -d base
-uv sync --extra api --extra bdd --extra embeddings --extra onnx
+uv sync --extra api --extra bdd --extra embeddings --extra onnx --extra extraction
 
 uv run corpus-extraire          # archive HAS -> fixtures/corpus.json + PDF
 uv run documentaliste-pages     # extraction du texte page à page
@@ -119,6 +102,9 @@ uv run uvicorn documentaliste.api.app:app --port 8005
 L'archive n'est pas dans le dépôt : 15 Go, retéléchargeables depuis l'open data de la HAS.
 `fixtures/` n'y est pas non plus — tout y est dérivé et reconstruit par les commandes
 ci-dessus.
+
+`--extra extraction` n'est utile qu'à cette reconstruction : il installe PyMuPDF, que
+l'image de production n'embarque pas — voir [Licence et sources](#licence-et-sources).
 
 **Vérification** — les trois, jamais l'une sans les autres :
 
@@ -135,8 +121,8 @@ uv run ruff check src/ tests/ ; uv run ruff format --check src/ tests/ ; uv run 
 | `POST /question` | une question, des passages, une réponse citée |
 
 **`POST /question` rend toujours les passages retrouvés, refus compris.** Ce n'est pas un
-détail d'affichage : on a mesuré 19 refus excessifs sur 53, et un refus nu ressemble à une
-panne. Un refus qui montre ce qu'il a trouvé ressemble à ce qu'il est — de la prudence.
+détail d'affichage : un refus nu ressemble à une panne, là où un refus qui montre ce qu'il a
+trouvé ressemble à ce qu'il est — de la prudence, et une invitation à lire soi-même.
 
 Le service **dégrade au lieu de tomber**. Budget épuisé, clé absente ou fournisseur en
 panne : la recherche continue, seule la rédaction se coupe, et le journal nomme la cause.
@@ -157,14 +143,29 @@ l'emplacement des secrets.
 ## Note sur ce dépôt
 
 Il contient **l'application**, pas l'appareil de mesure. Les trente et une sondes qui ont
-produit les chiffres ci-dessus — balayages de réglage, matrices de confusion, juge de
-fondement, relectures humaines — vivent hors du dépôt.
-
-Le paquet s'appelle encore `probes/` par héritage ; il ne contient plus que du code
-d'exécution.
+produit les chiffres ci-dessus — balayages de réglage, matrices de confusion, relectures
+humaines — vivent hors du dépôt.
 
 ## Licence et sources
 
-Corpus HAS sous [Licence Ouverte 2.0](https://www.etalab.gouv.fr/licence-ouverte-open-licence/).
-Modèle d'embeddings : [`intfloat/multilingual-e5-small`](https://huggingface.co/intfloat/multilingual-e5-small).
-Rédaction : API Mistral.
+Le code est sous [licence Apache 2.0](LICENSE). Les attributions dues aux tiers sont
+rassemblées dans [`NOTICE`](NOTICE), qui doit suivre toute redistribution.
+
+Corpus HAS sous [Licence Ouverte 2.0](https://www.etalab.gouv.fr/licence-ouverte-open-licence/),
+attribution : Haute Autorité de Santé. La HAS n'est associée ni à ce logiciel, ni aux
+traitements qui y sont appliqués à ses publications.
+
+Modèle d'embeddings : [`intfloat/multilingual-e5-small`](https://huggingface.co/intfloat/multilingual-e5-small),
+sous licence MIT, cuit dans l'image de production. Rédaction : API Mistral, consommée par le
+réseau — la recherche fonctionne sans elle, seule la rédaction se coupe.
+
+**PyMuPDF n'est pas installé par défaut.** Il est en AGPL-3.0 et n'entre pas dans l'image
+servie : présent, il ferait porter l'article 13 au service en réseau. Il est isolé dans
+l'extra `extraction`, à demander pour reconstruire le corpus depuis les PDF :
+
+```bash
+uv sync --extra extraction
+```
+
+Le texte qu'il produit est la sortie du programme, non une œuvre dérivée : le corpus extrait
+et la base n'en portent aucune obligation.

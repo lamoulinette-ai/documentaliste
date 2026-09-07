@@ -1,0 +1,74 @@
+Documentaliste
+Copyright 2026 La Moulinette AI
+
+Ce logiciel est distribué sous licence Apache 2.0 — voir le fichier LICENSE.
+
+
+-------------------------------------------------------------------------------
+Haute Autorité de Santé
+-------------------------------------------------------------------------------
+
+Le corpus interrogé est constitué des publications de la Haute Autorité de Santé,
+diffusées sous Licence Ouverte 2.0.
+
+    https://www.etalab.gouv.fr/licence-ouverte-open-licence/
+
+Attribution : Haute Autorité de Santé.
+
+Les extraits présents dans ce dépôt — réponses enregistrées, étalons, relevés de
+sondes — en sont issus et relèvent de la même licence. La Haute Autorité de Santé
+n'est associée ni à ce logiciel, ni aux traitements qui y sont appliqués à ses
+publications, ni aux réponses produites.
+
+
+-------------------------------------------------------------------------------
+intfloat/multilingual-e5-small
+-------------------------------------------------------------------------------
+
+Le modèle d'embedding est cuit dans l'image de production : sa notice voyage donc
+avec elle.
+
+    Multilingual E5 Text Embeddings: A Technical Report
+    Liang Wang, Nan Yang, Xiaolong Huang, Linjun Yang, Rangan Majumder, Furu Wei
+    arXiv:2402.05672 (2024)
+
+    https://huggingface.co/intfloat/multilingual-e5-small
+
+Publié sous licence MIT. Initialisé depuis microsoft/Multilingual-MiniLM-L12-H384.
+
+
+-------------------------------------------------------------------------------
+PyMuPDF — NON DISTRIBUÉ
+-------------------------------------------------------------------------------
+
+PyMuPDF est en double licence AGPL-3.0 ou commerciale (Artifex).
+
+    https://github.com/pymupdf/PyMuPDF
+
+**Il n'est pas installé par défaut et n'entre pas dans l'image servie.** Il est
+isolé dans l'extra `extraction`, qui n'est demandé que pour reconstruire le corpus
+à partir des PDF — une opération hors ligne, distincte du service.
+
+La raison est de licence, non de poids : présent dans l'image, il ferait porter
+l'article 13 de l'AGPL au service en réseau, qui devrait alors offrir sa source à
+tout visiteur.
+
+Le texte que PyMuPDF produit est la sortie du programme, non une œuvre dérivée de
+celui-ci : le corpus extrait et la base qui en découle n'en portent aucune
+obligation.
+
+
+-------------------------------------------------------------------------------
+Autres composants
+-------------------------------------------------------------------------------
+
+sentence-transformers (Apache 2.0), optimum et onnxruntime (Apache 2.0 et MIT),
+FastAPI, Pydantic, httpx, psycopg, tqdm, slowapi — chacun sous sa propre licence,
+telle que distribuée avec le paquet correspondant.
+
+pgvector (licence PostgreSQL) fournit le type et l'index vectoriels de la base.
+
+La rédaction des synthèses appelle l'API de Mistral AI. C'est un service consommé
+par le réseau, non un composant embarqué : aucune licence logicielle n'en découle,
+et le service fonctionne sans lui — la recherche continue, seule la rédaction se
+coupe.

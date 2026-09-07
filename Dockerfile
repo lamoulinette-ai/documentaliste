@@ -25,6 +25,14 @@ COPY pyproject.toml uv.lock ./
 # Les extras du service, et eux seuls : « api » pour FastAPI, « bdd » pour psycopg,
 # « embeddings » et « onnx » pour l'encodage de la question. L'appareil de mesure n'entre
 # pas dans l'image de production — c'est le tri décidé pour le dépôt vitrine, appliqué ici.
+#
+# **« extraction » ne doit jamais figurer ici, ni PyMuPDF revenir en dépendance de base.**
+# Il est en AGPL-3.0 : présent dans l'image, il ferait porter l'article 13 au service en
+# réseau, qui devrait alors offrir sa source à tout visiteur. Il ne sert qu'à l'ingestion,
+# hors ligne, et le texte qu'il produit est de la sortie — le corpus n'en porte rien.
+#
+# Les extras s'AJOUTENT aux dépendances de base, ils ne s'y substituent pas : nommer les
+# quatre ci-dessous n'exclut rien. C'est le `pyproject` qui décide de ce qui entre.
 ARG EXTRAS="--extra api --extra bdd --extra embeddings --extra onnx"
 RUN uv sync --frozen --no-dev --no-install-project ${EXTRAS}
 

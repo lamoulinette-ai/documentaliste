@@ -35,8 +35,22 @@ def empreinte(fichiers: list[Path]) -> str:
 
 
 def lire_pdf(chemin: Path) -> list[tuple[str, int, str]]:
-    """Texte page à page d'un seul PDF. Exécuté dans un processus séparé."""
-    import pymupdf
+    """Texte page à page d'un seul PDF. Exécuté dans un processus séparé.
+
+    L'import est local, et il l'est désormais pour deux raisons. La première tient au
+    processus séparé ; la seconde à la licence : **PyMuPDF n'est pas installé par défaut**.
+    Il est en AGPL-3.0, il n'entre pas dans l'image servie, et l'extra `extraction` doit être
+    demandé pour reconstruire le corpus. Le texte produit, lui, est de la sortie : ni le
+    corpus ni la base n'en portent d'obligation.
+    """
+    try:
+        import pymupdf
+    except ModuleNotFoundError as absent:  # pragma: no cover - dépend de l'installation
+        raise SystemExit(
+            "PyMuPDF n'est pas installé. Il est isolé dans l'extra « extraction » parce "
+            "qu'il est en AGPL-3.0 et ne doit pas entrer dans l'image servie :\n"
+            "    uv sync --extra extraction"
+        ) from absent
 
     with pymupdf.open(chemin) as pdf:
         return [(chemin.stem, n, page.get_text("text", sort=True)) for n, page in enumerate(pdf, 1)]

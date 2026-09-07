@@ -34,8 +34,8 @@ _REESSAYABLES = frozenset({429, 500, 502, 503, 504})
 #: Tentatives par appel, la première comprise.
 TENTATIVES = 5
 
-#: Attente initiale, doublée à chaque échec. Cinq tentatives couvrent ainsi une trentaine
-#: de secondes, ce qu'une limite de débit par minute suffit à franchir.
+#: Attente initiale, doublée à chaque échec : cinq tentatives ménagent quatre attentes,
+#: 1 + 2 + 4 + 8, soit quinze secondes.
 ATTENTE_INITIALE = 1.0
 
 
